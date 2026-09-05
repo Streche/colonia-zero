@@ -19,36 +19,41 @@ export interface Token {
   column: number;
 }
 
-const KEYWORD_ALIASES: Record<string, string> = {
-  se: 'se',
-  if: 'se',
-  senao: 'senao',
-  else: 'senao',
-  enquanto: 'enquanto',
-  while: 'enquanto',
-  funcao: 'funcao',
-  def: 'funcao',
-  retorna: 'retorna',
-  return: 'retorna',
-  verdadeiro: 'verdadeiro',
-  true: 'verdadeiro',
-  falso: 'falso',
-  false: 'falso',
-  repita: 'repita',
-  repeat: 'repita',
-  para: 'para',
-  for: 'para',
-  cada: 'cada',
-  each: 'cada',
-  em: 'em',
-  in: 'em',
-  e: 'e',
-  and: 'e',
-  ou: 'ou',
-  or: 'ou',
-  nao: 'nao',
-  not: 'nao',
-};
+// A Map, not a plain object: a plain object's bracket lookup falls through
+// to inherited Object.prototype members (e.g. `obj['constructor']` resolves
+// to the Object constructor, not undefined), which would misclassify
+// perfectly ordinary identifiers like `constructor` or `toString` as
+// keywords with a non-string token value.
+const KEYWORD_ALIASES = new Map<string, string>([
+  ['se', 'se'],
+  ['if', 'se'],
+  ['senao', 'senao'],
+  ['else', 'senao'],
+  ['enquanto', 'enquanto'],
+  ['while', 'enquanto'],
+  ['funcao', 'funcao'],
+  ['def', 'funcao'],
+  ['retorna', 'retorna'],
+  ['return', 'retorna'],
+  ['verdadeiro', 'verdadeiro'],
+  ['true', 'verdadeiro'],
+  ['falso', 'falso'],
+  ['false', 'falso'],
+  ['repita', 'repita'],
+  ['repeat', 'repita'],
+  ['para', 'para'],
+  ['for', 'para'],
+  ['cada', 'cada'],
+  ['each', 'cada'],
+  ['em', 'em'],
+  ['in', 'em'],
+  ['e', 'e'],
+  ['and', 'e'],
+  ['ou', 'ou'],
+  ['or', 'ou'],
+  ['nao', 'nao'],
+  ['not', 'nao'],
+]);
 const TWO_CHAR_OPERATORS = ['==', '!=', '<=', '>='];
 const ONE_CHAR_OPERATORS = new Set(['+', '-', '*', '/', '%', '=', '<', '>']);
 const PUNCTUATION = new Set(['(', ')', ',', ':', '[', ']', '{', '}']);
@@ -103,7 +108,11 @@ export class Lexer {
       if (char === '#') {
         const startColumn = this.column;
         const start = this.pos;
-        while (this.pos < this.source.length && this.source[this.pos] !== '\n') {
+        while (
+          this.pos < this.source.length &&
+          this.source[this.pos] !== '\n' &&
+          this.source[this.pos] !== '\r'
+        ) {
           this.advance();
         }
         tokens.push({
@@ -125,9 +134,9 @@ export class Lexer {
           this.advance();
         }
         const value = this.source.slice(start, this.pos);
-        const canonical = KEYWORD_ALIASES[value];
+        const canonical = KEYWORD_ALIASES.get(value);
         tokens.push({
-          type: canonical ? TokenType.Keyword : TokenType.Identifier,
+          type: canonical === undefined ? TokenType.Identifier : TokenType.Keyword,
           value: canonical ?? value,
           line: this.line,
           column: startColumn,
@@ -239,7 +248,7 @@ export class Lexer {
     }
 
     const next = this.source[this.pos];
-    if (next === undefined || next === '\n' || next === '#') {
+    if (next === undefined || next === '\n' || next === '\r' || next === '#') {
       return true;
     }
 

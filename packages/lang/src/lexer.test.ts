@@ -201,6 +201,38 @@ describe('Lexer', () => {
     expect(dedents).toHaveLength(2);
   });
 
+  it('does not misclassify identifiers that collide with Object.prototype members', () => {
+    for (const word of [
+      'constructor',
+      'toString',
+      'hasOwnProperty',
+      'valueOf',
+      'isPrototypeOf',
+      'propertyIsEnumerable',
+      'toLocaleString',
+    ]) {
+      const tokens = new Lexer(word).tokenize();
+      expect(tokens[0]).toMatchObject({ type: TokenType.Identifier, value: word });
+    }
+  });
+
+  it('does not let a CRLF blank line inside a block disturb the indent stack', () => {
+    const source = 'funcao f():\r\n    a\r\n\r\n    b\r\n';
+    const tokens = new Lexer(source).tokenize();
+    const dedents = tokens.filter((t) => t.type === TokenType.Dedent);
+    expect(dedents).toHaveLength(1);
+  });
+
+  it('does not throw on a CRLF blank line with trailing spaces inside a nested block', () => {
+    const source = 'se a:\r\n    se b:\r\n        c\r\n   \r\n    d\r\n';
+    expect(() => new Lexer(source).tokenize()).not.toThrow();
+  });
+
+  it('does not include the trailing \\r in a comment token value on CRLF input', () => {
+    const tokens = new Lexer('# oi\r\nmover').tokenize();
+    expect(tokens[0]).toMatchObject({ type: TokenType.Comment, value: '# oi' });
+  });
+
   it('always ends with exactly one EOF token', () => {
     const tokens = new Lexer('a b c').tokenize();
     expect(tokens.at(-1)).toMatchObject({ type: TokenType.EOF });

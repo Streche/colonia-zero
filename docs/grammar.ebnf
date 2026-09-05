@@ -1,0 +1,15 @@
+(* docs/grammar.ebnf — lexical grammar only, matches packages/lang/src/lexer.ts.
+   Syntactic grammar (statements, blocks, INDENT/DEDENT) is Fase 1 scope. *)
+
+keyword        = "se" | "senao" | "enquanto" | "funcao" | "retorna"
+               | "verdadeiro" | "falso" ;
+identifier     = letter , { letter | digit | "_" } ;
+number         = digit , { digit } ;
+string         = '"' , { any character - '"' - newline } , '"' ;
+operator       = "==" | "!=" | "<=" | ">=" | "+" | "-" | "*" | "/" | "=" | "<" | ">" ;
+punctuation    = "(" | ")" | "," | ":" ;
+comment        = "#" , { any character - newline } ;
+newline        = "\n" ;
+
+letter         = "a".."z" | "A".."Z" | "_" ;
+digit          = "0".."9" ;

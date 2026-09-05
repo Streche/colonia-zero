@@ -271,14 +271,17 @@ jobs:
         with:
           node-version: 22
       - uses: pnpm/action-setup@v4
-        with:
-          version: 11
       - run: pnpm install --frozen-lockfile
       - run: pnpm format:check
       - run: pnpm lint
       - run: pnpm typecheck
       - run: pnpm test
 ```
+
+Do not pass `version:` to `pnpm/action-setup@v4` when `package.json` already has a
+`packageManager` field (Step 3) — the action treats having both as an error
+("Multiple versions of pnpm specified") rather than picking one. Confirmed live:
+the first CI run on this repo failed on exactly this before the fix.
 
 - [x] **Step 2: Verify locally (the exact sequence CI will run)**
 

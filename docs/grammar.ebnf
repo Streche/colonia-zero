@@ -1,15 +1,38 @@
 (* docs/grammar.ebnf — lexical grammar only, matches packages/lang/src/lexer.ts.
-   Syntactic grammar (statements, blocks, INDENT/DEDENT) is Fase 1 scope. *)
+   Syntactic grammar (statements, blocks, expressions) is documented once the
+   parser exists — see the Fase 1 parser plan. *)
 
-keyword        = "se" | "senao" | "enquanto" | "funcao" | "retorna"
-               | "verdadeiro" | "falso" ;
+keyword        = "se" | "if"
+               | "senao" | "else"
+               | "enquanto" | "while"
+               | "funcao" | "def"
+               | "retorna" | "return"
+               | "verdadeiro" | "true"
+               | "falso" | "false"
+               | "repita" | "repeat"
+               | "para" | "for"
+               | "cada" | "each"
+               | "em" | "in"
+               | "e" | "and"
+               | "ou" | "or"
+               | "nao" | "not" ;
+               (* every EN alias lexes to the same canonical PT keyword value;
+                  there is exactly one AST vocabulary downstream of the lexer *)
+
 identifier     = letter , { letter | digit | "_" } ;
 number         = digit , { digit } ;
 string         = '"' , { any character - '"' - newline } , '"' ;
-operator       = "==" | "!=" | "<=" | ">=" | "+" | "-" | "*" | "/" | "=" | "<" | ">" ;
-punctuation    = "(" | ")" | "," | ":" ;
+operator       = "==" | "!=" | "<=" | ">=" | "+" | "-" | "*" | "/" | "%" | "=" | "<" | ">" ;
+punctuation    = "(" | ")" | "," | ":" | "[" | "]" | "{" | "}" ;
 comment        = "#" , { any character - newline } ;
 newline        = "\n" ;
+indent         = (* structural token: leading whitespace width on a new
+                    logical line is greater than the enclosing block's width.
+                    Tabs in leading whitespace are a lex error. *) ;
+dedent         = (* structural token: leading whitespace width on a new
+                    logical line drops back to an enclosing block's width.
+                    One Dedent per level closed; a width matching no
+                    enclosing level is a lex error ("indentação inconsistente"). *) ;
 
 letter         = "a".."z" | "A".."Z" | "_" ;
 digit          = "0".."9" ;

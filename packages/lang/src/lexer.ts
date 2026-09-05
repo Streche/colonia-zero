@@ -17,10 +17,39 @@ export interface Token {
   column: number;
 }
 
-const KEYWORDS = new Set(['se', 'senao', 'enquanto', 'funcao', 'retorna', 'verdadeiro', 'falso']);
+const KEYWORD_ALIASES: Record<string, string> = {
+  se: 'se',
+  if: 'se',
+  senao: 'senao',
+  else: 'senao',
+  enquanto: 'enquanto',
+  while: 'enquanto',
+  funcao: 'funcao',
+  def: 'funcao',
+  retorna: 'retorna',
+  return: 'retorna',
+  verdadeiro: 'verdadeiro',
+  true: 'verdadeiro',
+  falso: 'falso',
+  false: 'falso',
+  repita: 'repita',
+  repeat: 'repita',
+  para: 'para',
+  for: 'para',
+  cada: 'cada',
+  each: 'cada',
+  em: 'em',
+  in: 'em',
+  e: 'e',
+  and: 'e',
+  ou: 'ou',
+  or: 'ou',
+  nao: 'nao',
+  not: 'nao',
+};
 const TWO_CHAR_OPERATORS = ['==', '!=', '<=', '>='];
-const ONE_CHAR_OPERATORS = new Set(['+', '-', '*', '/', '=', '<', '>']);
-const PUNCTUATION = new Set(['(', ')', ',', ':']);
+const ONE_CHAR_OPERATORS = new Set(['+', '-', '*', '/', '%', '=', '<', '>']);
+const PUNCTUATION = new Set(['(', ')', ',', ':', '[', ']', '{', '}']);
 
 export class LexError extends Error {
   constructor(
@@ -84,9 +113,10 @@ export class Lexer {
           this.advance();
         }
         const value = this.source.slice(start, this.pos);
+        const canonical = KEYWORD_ALIASES[value];
         tokens.push({
-          type: KEYWORDS.has(value) ? TokenType.Keyword : TokenType.Identifier,
-          value,
+          type: canonical ? TokenType.Keyword : TokenType.Identifier,
+          value: canonical ?? value,
           line: this.line,
           column: startColumn,
         });

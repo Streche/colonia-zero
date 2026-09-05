@@ -25,6 +25,41 @@ describe('Lexer', () => {
     }
   });
 
+  it('recognizes the new block/collection keywords added for A2-A6', () => {
+    for (const kw of ['repita', 'para', 'cada', 'em', 'e', 'ou', 'nao']) {
+      expect(types(kw)).toEqual([TokenType.Keyword, TokenType.EOF]);
+    }
+  });
+
+  it('resolves English keyword aliases to their canonical Portuguese value', () => {
+    const pairs: Array<[string, string]> = [
+      ['if', 'se'],
+      ['else', 'senao'],
+      ['while', 'enquanto'],
+      ['def', 'funcao'],
+      ['return', 'retorna'],
+      ['true', 'verdadeiro'],
+      ['false', 'falso'],
+      ['repeat', 'repita'],
+      ['for', 'para'],
+      ['each', 'cada'],
+      ['in', 'em'],
+      ['and', 'e'],
+      ['or', 'ou'],
+      ['not', 'nao'],
+    ];
+    for (const [alias, canonical] of pairs) {
+      const tokens = new Lexer(alias).tokenize();
+      expect(tokens[0]).toMatchObject({ type: TokenType.Keyword, value: canonical });
+    }
+  });
+
+  it('produces the same canonical token whether the source uses PT or EN spelling', () => {
+    const pt = new Lexer('se').tokenize();
+    const en = new Lexer('if').tokenize();
+    expect(pt[0]?.value).toBe(en[0]?.value);
+  });
+
   it('does not confuse an identifier that merely starts with a keyword', () => {
     expect(types('senao_definido')).toEqual([TokenType.Identifier, TokenType.EOF]);
   });
@@ -61,6 +96,20 @@ describe('Lexer', () => {
       TokenType.Punctuation,
       TokenType.EOF,
     ]);
+  });
+
+  it('tokenizes the new list/dict punctuation', () => {
+    expect(types('[]{}')).toEqual([
+      TokenType.Punctuation,
+      TokenType.Punctuation,
+      TokenType.Punctuation,
+      TokenType.Punctuation,
+      TokenType.EOF,
+    ]);
+  });
+
+  it('tokenizes the modulo operator', () => {
+    expect(types('%')).toEqual([TokenType.Operator, TokenType.EOF]);
   });
 
   it('tokenizes a line comment up to (not including) the newline', () => {

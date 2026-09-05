@@ -7,6 +7,8 @@ export enum TokenType {
   Punctuation = 'Punctuation',
   Comment = 'Comment',
   Newline = 'Newline',
+  Indent = 'Indent',
+  Dedent = 'Dedent',
   EOF = 'EOF',
 }
 
@@ -66,6 +68,8 @@ export class Lexer {
   private pos = 0;
   private line = 1;
   private column = 1;
+  private atLineStart = true;
+  private readonly indentStack: number[] = [0];
 
   constructor(private readonly source: string) {}
 
@@ -73,6 +77,13 @@ export class Lexer {
     const tokens: Token[] = [];
 
     while (this.pos < this.source.length) {
+      if (this.atLineStart) {
+        this.atLineStart = false;
+        if (this.consumeIndentation(tokens)) {
+          continue; // blank or comment-only line: indent stack untouched
+        }
+      }
+
       const char = this.source[this.pos] as string;
 
       if (char === '\n') {
@@ -80,6 +91,7 @@ export class Lexer {
         this.pos += 1;
         this.line += 1;
         this.column = 1;
+        this.atLineStart = true;
         continue;
       }
 
@@ -196,8 +208,63 @@ export class Lexer {
       throw new LexError(`unexpected character '${char}'`, this.line, this.column);
     }
 
+    while (this.indentStack.length > 1) {
+      this.indentStack.pop();
+      tokens.push({ type: TokenType.Dedent, value: '', line: this.line, column: this.column });
+    }
     tokens.push({ type: TokenType.EOF, value: '', line: this.line, column: this.column });
     return tokens;
+  }
+
+  // Measures leading whitespace on a new logical line and emits Indent/Dedent
+  // as needed. Returns true for a blank or comment-only line, which must not
+  // change the indent stack.
+  private consumeIndentation(tokens: Token[]): boolean {
+    const lineStartColumn = this.column;
+    let width = 0;
+    while (this.pos < this.source.length) {
+      const char = this.source[this.pos];
+      if (char === ' ') {
+        width += 1;
+        this.advance();
+      } else if (char === '\t') {
+        throw new LexError(
+          'tabs não são permitidos para indentação, use espaços',
+          this.line,
+          this.column,
+        );
+      } else {
+        break;
+      }
+    }
+
+    const next = this.source[this.pos];
+    if (next === undefined || next === '\n' || next === '#') {
+      return true;
+    }
+
+    const top = this.indentStack[this.indentStack.length - 1] as number;
+    if (width > top) {
+      this.indentStack.push(width);
+      tokens.push({ type: TokenType.Indent, value: '', line: this.line, column: lineStartColumn });
+    } else if (width < top) {
+      while (
+        this.indentStack.length > 1 &&
+        (this.indentStack[this.indentStack.length - 1] as number) > width
+      ) {
+        this.indentStack.pop();
+        tokens.push({
+          type: TokenType.Dedent,
+          value: '',
+          line: this.line,
+          column: lineStartColumn,
+        });
+      }
+      if (this.indentStack[this.indentStack.length - 1] !== width) {
+        throw new LexError('indentação inconsistente', this.line, lineStartColumn);
+      }
+    }
+    return false;
   }
 
   private advance(): void {

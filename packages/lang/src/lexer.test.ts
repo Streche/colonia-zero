@@ -128,6 +128,79 @@ describe('Lexer', () => {
     ]);
   });
 
+  it('does not emit Indent/Dedent for a flat program with no leading whitespace', () => {
+    expect(types('a\nb\nc')).toEqual([
+      TokenType.Identifier,
+      TokenType.Newline,
+      TokenType.Identifier,
+      TokenType.Newline,
+      TokenType.Identifier,
+      TokenType.EOF,
+    ]);
+  });
+
+  it('emits Indent then Dedent around a single indented block', () => {
+    const source = 'funcao f():\n    retorna 1\n';
+    expect(types(source)).toEqual([
+      TokenType.Keyword, // funcao
+      TokenType.Identifier, // f
+      TokenType.Punctuation, // (
+      TokenType.Punctuation, // )
+      TokenType.Punctuation, // :
+      TokenType.Newline,
+      TokenType.Indent,
+      TokenType.Keyword, // retorna
+      TokenType.Number, // 1
+      TokenType.Newline,
+      TokenType.Dedent,
+      TokenType.EOF,
+    ]);
+  });
+
+  it('emits nested Indent/Dedent pairs in the right order', () => {
+    const source = 'se a:\n    se b:\n        retorna 1\n';
+    const kinds = types(source).filter((t) => t === TokenType.Indent || t === TokenType.Dedent);
+    expect(kinds).toEqual([TokenType.Indent, TokenType.Indent, TokenType.Dedent, TokenType.Dedent]);
+  });
+
+  it('dedents to an intermediate level, not all the way to zero', () => {
+    const source = 'se a:\n    se b:\n        c\n    d\n';
+    const tokens = new Lexer(source).tokenize();
+    const dIndex = tokens.findIndex((t) => t.value === 'd');
+    expect(tokens[dIndex - 1]).toMatchObject({ type: TokenType.Dedent });
+    expect(tokens[dIndex - 2]).not.toMatchObject({ type: TokenType.Dedent });
+  });
+
+  it('does not let a blank line inside a block disturb the indent stack', () => {
+    const source = 'funcao f():\n    a\n\n    b\n';
+    const tokens = new Lexer(source).tokenize();
+    const dedents = tokens.filter((t) => t.type === TokenType.Dedent);
+    expect(dedents).toHaveLength(1);
+  });
+
+  it('does not let a comment-only line inside a block disturb the indent stack', () => {
+    const source = 'funcao f():\n    a\n    # nota\n    b\n';
+    const tokens = new Lexer(source).tokenize();
+    const indents = tokens.filter((t) => t.type === TokenType.Indent);
+    expect(indents).toHaveLength(1);
+  });
+
+  it('throws LexError when leading whitespace uses a tab', () => {
+    expect(() => new Lexer('funcao f():\n\tretorna 1\n').tokenize()).toThrow(/espaços/);
+  });
+
+  it('throws LexError on a dedent that matches no enclosing indentation level', () => {
+    const source = 'se a:\n    se b:\n        c\n  d\n';
+    expect(() => new Lexer(source).tokenize()).toThrow(/inconsistente/);
+  });
+
+  it('emits one Dedent per level still open when the source ends without dedenting', () => {
+    const source = 'se a:\n    se b:\n        c';
+    const tokens = new Lexer(source).tokenize();
+    const dedents = tokens.filter((t) => t.type === TokenType.Dedent);
+    expect(dedents).toHaveLength(2);
+  });
+
   it('always ends with exactly one EOF token', () => {
     const tokens = new Lexer('a b c').tokenize();
     expect(tokens.at(-1)).toMatchObject({ type: TokenType.EOF });
@@ -163,8 +236,8 @@ describe('Lexer', () => {
   });
 
   it('tracks column numbers within a line', () => {
-    const tokens = new Lexer('  ab').tokenize();
-    expect(tokens[0]).toMatchObject({ value: 'ab', column: 3 });
+    const tokens = new Lexer('a  bb').tokenize();
+    expect(tokens[1]).toMatchObject({ value: 'bb', column: 4 });
   });
 
   it('throws LexError with position info on an unterminated string', () => {

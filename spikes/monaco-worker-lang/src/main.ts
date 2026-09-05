@@ -40,3 +40,20 @@ requestDiagnostics();
 
 (window as unknown as { __spikeReady: boolean }).__spikeReady = true;
 console.log('Spike B ready: Monaco editor with custom language + worker diagnostics.');
+
+const nucleoButton = document.createElement('button');
+nucleoButton.textContent = 'Carregar Núcleo (PGlite)';
+nucleoButton.style.position = 'fixed';
+nucleoButton.style.top = '8px';
+nucleoButton.style.right = '8px';
+document.body.appendChild(nucleoButton);
+
+nucleoButton.addEventListener('click', () => {
+  const t0 = performance.now();
+  void import('@electric-sql/pglite').then(async ({ PGlite }) => {
+    const db = new PGlite();
+    await db.query('SELECT 1;');
+    const elapsed = performance.now() - t0;
+    console.log(`Núcleo (PGlite) carregado sob demanda em ${elapsed.toFixed(1)}ms`);
+  });
+});

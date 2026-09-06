@@ -691,7 +691,7 @@ git commit -m "feat(lang): add AST types and full expression parser"
 - Consumes: the `Expression`-parsing methods and shared helpers (`peek`, `peekNext`, `advance`, `check`, `expect`, `describeToken`) from Task 1.
 - Produces: a working `parseProgram()` — the semantic-analyzer plan (next after this one) consumes `Program`/`Statement` exactly as shaped in `ast.ts`.
 
-- [ ] **Step 1: Write the failing tests for the simplest statements**
+- [x] **Step 1: Write the failing tests for the simplest statements**
 
 Add to `packages/lang/src/parser.test.ts`, in a second `describe` block:
 
@@ -737,12 +737,12 @@ describe('Parser (statements)', () => {
 
 (The `import type { Program }` line goes at the top of the file with the other imports — add it there, not inline.)
 
-- [ ] **Step 2: Run the tests to verify they fail**
+- [x] **Step 2: Run the tests to verify they fail**
 
 Run: `pnpm --filter @colonia-zero/lang test`
 Expected: FAIL — `parseStatement()` still throws its Task 1 placeholder for every input.
 
-- [ ] **Step 3: Implement `parseStatement`, assignment, and expression-statement**
+- [x] **Step 3: Implement `parseStatement`, assignment, and expression-statement**
 
 In `packages/lang/src/parser.ts`, replace:
 
@@ -818,12 +818,12 @@ with:
   }
 ```
 
-- [ ] **Step 4: Run the tests to verify they pass**
+- [x] **Step 4: Run the tests to verify they pass**
 
 Run: `pnpm --filter @colonia-zero/lang test`
 Expected: the 5 tests from Step 1 pass. Everything requiring `se`/`enquanto`/`repita`/`para`/`funcao`/`retorna` still fails (not written yet).
 
-- [ ] **Step 5: Write the failing tests for control flow and function declarations**
+- [x] **Step 5: Write the failing tests for control flow and function declarations**
 
 Add to the `describe('Parser (statements)', ...)` block:
 
@@ -935,12 +935,12 @@ it('throws a friendly Portuguese message for a missing function name', () => {
 });
 ```
 
-- [ ] **Step 6: Run the tests to verify they fail**
+- [x] **Step 6: Run the tests to verify they fail**
 
 Run: `pnpm --filter @colonia-zero/lang test`
 Expected: FAIL — none of `parseIfStatement`/`parseWhileStatement`/`parseRepeatStatement`/`parseForEachStatement`/`parseFunctionDeclaration`/`parseReturnStatement` exist yet, so this is a compile error via Vitest, same situation as Task 1 Step 3.
 
-- [ ] **Step 7: Implement the remaining statement grammar**
+- [x] **Step 7: Implement the remaining statement grammar**
 
 In `packages/lang/src/parser.ts`, add these methods (anywhere inside the class, e.g. right after `parseBlock`):
 
@@ -1036,12 +1036,12 @@ In `packages/lang/src/parser.ts`, add these methods (anywhere inside the class, 
   }
 ```
 
-- [ ] **Step 8: Run the tests to verify they pass**
+- [x] **Step 8: Run the tests to verify they pass**
 
 Run: `pnpm --filter @colonia-zero/lang test`
 Expected: all pass.
 
-- [ ] **Step 9: Export the new symbols from the package barrel**
+- [x] **Step 9: Export the new symbols from the package barrel**
 
 Replace the full contents of `packages/lang/src/index.ts` with:
 
@@ -1052,7 +1052,7 @@ export { Parser, ParseError } from './parser';
 export type { Expression, Statement, Program } from './ast';
 ```
 
-- [ ] **Step 10: Full task verification and commit**
+- [x] **Step 10: Full task verification and commit**
 
 Run: `pnpm format:check && pnpm lint && pnpm typecheck && pnpm test` (repo root)
 Expected: all green.
@@ -1075,7 +1075,7 @@ git commit -m "feat(lang): add statement parser for control flow and function de
 - Consumes: the final grammar implemented in Tasks 1-2.
 - Produces: the syntactic-grammar reference the semantic-analyzer plan (next in Fase 1) and the property-based-testing plan after it both point back to.
 
-- [ ] **Step 1: Add the syntactic grammar**
+- [x] **Step 1: Add the syntactic grammar**
 
 Append to `docs/grammar.ebnf` (after the existing lexical-grammar content, keep everything already there):
 
@@ -1130,12 +1130,12 @@ dictEntry      = expression , ":" , expression ;
    possible trailing comment at every rule that ends a line. *)
 ```
 
-- [ ] **Step 2: Full repo verification**
+- [x] **Step 2: Full repo verification**
 
 Run: `pnpm format:check && pnpm lint && pnpm typecheck && pnpm test` (repo root)
 Expected: all green.
 
-- [ ] **Step 3: Commit and push**
+- [x] **Step 3: Commit and push**
 
 ```bash
 git add docs/grammar.ebnf
@@ -1147,9 +1147,9 @@ git push
 
 ## Exit criteria for this sub-plan
 
-- [ ] `pnpm --filter @colonia-zero/lang test` is green with every new test from Tasks 1-2 included.
-- [ ] `pnpm format:check && pnpm lint && pnpm typecheck && pnpm test` is green at the repo root.
-- [ ] `docs/grammar.ebnf` documents the full syntactic grammar, matching `parser.ts` exactly.
-- [ ] Three commits pushed to `main`: expression parser, statement parser, grammar doc.
+- [x] `pnpm --filter @colonia-zero/lang test` is green with every new test from Tasks 1-2 included.
+- [x] `pnpm format:check && pnpm lint && pnpm typecheck && pnpm test` is green at the repo root.
+- [x] `docs/grammar.ebnf` documents the full syntactic grammar, matching `parser.ts` exactly.
+- [x] Three commits pushed to `main`: expression parser, statement parser, grammar doc.
 
 **Next sub-plan in Fase 1:** an AST-to-source printer plus `fast-check`-based property testing (`any AST → print → reparse → same AST`), the parser risk mitigation called out in the project plan §6.2 ("Bug sutil no parser destrói saves"). It needs today's frozen `Expression`/`Statement`/`Program` shape to generate from, which is why it comes after this plan rather than inside it. After that: the semantic analyzer (scope resolution, feature gating by unlocked tier, Levenshtein-based "did you mean" suggestions for typos in identifiers/function names — deliberately deferred out of this parser plan since it needs to know what identifiers exist, which is a semantic question, not a syntactic one).

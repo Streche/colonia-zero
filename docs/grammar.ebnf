@@ -1,6 +1,5 @@
-(* docs/grammar.ebnf — lexical grammar only, matches packages/lang/src/lexer.ts.
-   Syntactic grammar (statements, blocks, expressions) is documented once the
-   parser exists — see the Fase 1 parser plan. *)
+(* docs/grammar.ebnf — lexical grammar matches packages/lang/src/lexer.ts,
+   syntactic grammar (below) matches packages/lang/src/parser.ts. *)
 
 keyword        = "se" | "if"
                | "senao" | "else"
@@ -36,3 +35,51 @@ dedent         = (* structural token: leading whitespace width on a new
 
 letter         = "a".."z" | "A".."Z" | "_" ;
 digit          = "0".."9" ;
+
+(* --- Syntactic grammar (packages/lang/src/parser.ts) --- *)
+
+program        = { statement } ;
+block          = INDENT , { statement } , DEDENT ;
+
+statement      = ifStatement | whileStatement | repeatStatement | forEachStatement
+               | functionDeclaration | returnStatement | assignment
+               | expressionStatement ;
+
+ifStatement    = "se" , expression , ":" , NEWLINE , block ,
+                 [ "senao" , ":" , NEWLINE , block ] ;
+whileStatement = "enquanto" , expression , ":" , NEWLINE , block ;
+repeatStatement= "repita" , expression , ":" , NEWLINE , block ;
+forEachStatement = "para" , "cada" , identifier , "em" , expression , ":" , NEWLINE , block ;
+functionDeclaration = "funcao" , identifier , "(" , [ paramList ] , ")" , ":" , NEWLINE , block ;
+paramList      = identifier , { "," , identifier } ;
+returnStatement= "retorna" , [ expression ] , statementEnd ;
+assignment     = identifier , "=" , expression , statementEnd ;
+expressionStatement = expression , statementEnd ;
+statementEnd   = NEWLINE | DEDENT | EOF ;
+               (* the last statement in a source with no trailing newline is
+                  followed directly by DEDENT or EOF, not NEWLINE *)
+
+(* precedence, loosest to tightest *)
+expression     = logicOr ;
+logicOr        = logicAnd , { "ou" , logicAnd } ;
+logicAnd       = logicNot , { "e" , logicNot } ;
+logicNot       = [ "nao" ] , equality ;
+equality       = comparison , { ( "==" | "!=" ) , comparison } ;
+comparison     = additive , { ( "<" | ">" | "<=" | ">=" ) , additive } ;
+additive       = multiplicative , { ( "+" | "-" ) , multiplicative } ;
+multiplicative = unary , { ( "*" | "/" | "%" ) , unary } ;
+unary          = [ "-" ] , postfix ;
+postfix        = primary , { callSuffix | indexSuffix } ;
+callSuffix     = "(" , [ argList ] , ")" ;
+indexSuffix    = "[" , expression , "]" ;
+argList        = expression , { "," , expression } ;
+primary        = number | string | "verdadeiro" | "falso" | identifier
+               | "(" , expression , ")" | listLiteral | dictLiteral ;
+listLiteral    = "[" , [ expression , { "," , expression } ] , "]" ;
+dictLiteral    = "{" , [ dictEntry , { "," , dictEntry } ] , "}" ;
+dictEntry      = expression , ":" , expression ;
+
+(* Comments are lexically real (see lexical grammar above) but syntactically
+   invisible: the parser filters every Comment token out of the stream
+   before applying any of the rules above, rather than special-casing a
+   possible trailing comment at every rule that ends a line. *)

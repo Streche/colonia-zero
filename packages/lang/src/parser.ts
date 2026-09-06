@@ -104,6 +104,10 @@ export class Parser {
 
   private parseBlock(): Statement[] {
     this.expect(TokenType.Newline, 'esperava quebra de linha antes do bloco');
+    // A blank or comment-only line right after the header produces its own
+    // bare Newline with no Indent (the lexer never touches the indent stack
+    // for those lines) — skip past any of those before requiring Indent.
+    this.skipNewlines();
     this.expect(TokenType.Indent, 'esperava um bloco indentado');
     const statements: Statement[] = [];
     this.skipNewlines();

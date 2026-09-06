@@ -75,6 +75,7 @@ export class Lexer {
   private column = 1;
   private atLineStart = true;
   private readonly indentStack: number[] = [0];
+  private bracketDepth = 0;
 
   constructor(private readonly source: string) {}
 
@@ -92,6 +93,16 @@ export class Lexer {
       const char = this.source[this.pos] as string;
 
       if (char === '\n') {
+        // Inside ( [ { ... } ] ), a newline is just formatting — same rule
+        // Python uses to let a list/call/parenthesized expression wrap
+        // across lines without a continuation marker. No Newline token, no
+        // line-start indentation check for the line that follows.
+        if (this.bracketDepth > 0) {
+          this.pos += 1;
+          this.line += 1;
+          this.column = 1;
+          continue;
+        }
         tokens.push({ type: TokenType.Newline, value: '\n', line: this.line, column: this.column });
         this.pos += 1;
         this.line += 1;
@@ -204,6 +215,11 @@ export class Lexer {
       }
 
       if (PUNCTUATION.has(char)) {
+        if (char === '(' || char === '[' || char === '{') {
+          this.bracketDepth += 1;
+        } else if (char === ')' || char === ']' || char === '}') {
+          this.bracketDepth = Math.max(0, this.bracketDepth - 1);
+        }
         tokens.push({
           type: TokenType.Punctuation,
           value: char,

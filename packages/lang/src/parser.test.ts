@@ -283,6 +283,89 @@ describe('Parser (statements)', () => {
     expect(fn.body).toHaveLength(2);
   });
 
+  it('parses a block whose first line is a comment', () => {
+    const program = parseProgram('funcao f():\n    # nota\n    retorna 1\n');
+    const fn = program.statements[0] as { body: unknown[] };
+    expect(fn.body).toHaveLength(1);
+  });
+
+  it('parses a block whose first line is blank', () => {
+    const program = parseProgram('funcao f():\n\n    retorna 1\n');
+    const fn = program.statements[0] as { body: unknown[] };
+    expect(fn.body).toHaveLength(1);
+  });
+
+  it('parses a list literal that wraps across physical lines', () => {
+    const expr = parseExpr('[1,\n 2,\n 3]');
+    expect(expr).toMatchObject({
+      kind: 'ListLiteral',
+      elements: [
+        { kind: 'NumberLiteral', value: 1 },
+        { kind: 'NumberLiteral', value: 2 },
+        { kind: 'NumberLiteral', value: 3 },
+      ],
+    });
+  });
+
+  it('parses call arguments that wrap across physical lines', () => {
+    const expr = parseExpr('mover(NORTE,\n 2)');
+    expect(expr).toMatchObject({
+      kind: 'CallExpression',
+      callee: { kind: 'Identifier', name: 'mover' },
+      args: [
+        { kind: 'Identifier', name: 'NORTE' },
+        { kind: 'NumberLiteral', value: 2 },
+      ],
+    });
+  });
+
+  it('parses a parenthesized expression that wraps across physical lines', () => {
+    const expr = parseExpr('(1 +\n 2)');
+    expect(expr).toMatchObject({ kind: 'BinaryExpression', operator: '+' });
+  });
+
+  it('parses a dict literal that wraps across physical lines', () => {
+    const expr = parseExpr('{\n  "a": 1,\n  "b": 2\n}');
+    expect(expr).toMatchObject({
+      kind: 'DictLiteral',
+      entries: [
+        { key: { kind: 'StringLiteral', value: 'a' } },
+        { key: { kind: 'StringLiteral', value: 'b' } },
+      ],
+    });
+  });
+
+  it('still treats a newline as significant once back outside the brackets', () => {
+    const program = parseProgram('x = [1,\n 2]\ny = 3\n');
+    expect(program.statements).toHaveLength(2);
+  });
+
+  it('allows a chain of unary minus signs', () => {
+    const expr = parseExpr('- -5');
+    expect(expr).toMatchObject({
+      kind: 'UnaryExpression',
+      operator: '-',
+      operand: {
+        kind: 'UnaryExpression',
+        operator: '-',
+        operand: { kind: 'NumberLiteral', value: 5 },
+      },
+    });
+  });
+
+  it('allows a chain of "nao"', () => {
+    const expr = parseExpr('nao nao a');
+    expect(expr).toMatchObject({
+      kind: 'UnaryExpression',
+      operator: 'nao',
+      operand: {
+        kind: 'UnaryExpression',
+        operator: 'nao',
+        operand: { kind: 'Identifier', name: 'a' },
+      },
+    });
+  });
+
   it('parses bilingual keyword spelling identically to Portuguese', () => {
     const pt = parseProgram('se a:\n    b()\n');
     const en = parseProgram('if a:\n    b()\n');

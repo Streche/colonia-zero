@@ -50,11 +50,163 @@ export class Parser {
   }
 
   private parseStatement(): Statement {
+    if (this.check(TokenType.Keyword, 'se')) return this.parseIfStatement();
+    if (this.check(TokenType.Keyword, 'enquanto')) return this.parseWhileStatement();
+    if (this.check(TokenType.Keyword, 'repita')) return this.parseRepeatStatement();
+    if (this.check(TokenType.Keyword, 'para')) return this.parseForEachStatement();
+    if (this.check(TokenType.Keyword, 'funcao')) return this.parseFunctionDeclaration();
+    if (this.check(TokenType.Keyword, 'retorna')) return this.parseReturnStatement();
+
+    const next = this.peekNext();
+    if (
+      this.check(TokenType.Identifier) &&
+      next?.type === TokenType.Operator &&
+      next.value === '='
+    ) {
+      return this.parseAssignment();
+    }
+
+    const token = this.peek();
+    const expression = this.parseExpression();
+    this.expectStatementEnd();
+    return { kind: 'ExpressionStatement', expression, line: token.line, column: token.column };
+  }
+
+  private expectStatementEnd(): void {
+    if (this.check(TokenType.Newline)) {
+      this.advance();
+      return;
+    }
+    if (this.check(TokenType.Dedent) || this.check(TokenType.EOF)) {
+      return;
+    }
+    const token = this.peek();
     throw new ParseError(
-      'parseStatement not implemented yet',
-      this.peek().line,
-      this.peek().column,
+      `esperava fim de linha, encontrado ${describeToken(token)}`,
+      token.line,
+      token.column,
     );
+  }
+
+  private parseAssignment(): Statement {
+    const nameToken = this.expect(TokenType.Identifier, 'esperava um nome de variável');
+    this.expect(TokenType.Operator, "esperava '='", '=');
+    const value = this.parseExpression();
+    this.expectStatementEnd();
+    return {
+      kind: 'Assignment',
+      target: nameToken.value,
+      value,
+      line: nameToken.line,
+      column: nameToken.column,
+    };
+  }
+
+  private parseBlock(): Statement[] {
+    this.expect(TokenType.Newline, 'esperava quebra de linha antes do bloco');
+    this.expect(TokenType.Indent, 'esperava um bloco indentado');
+    const statements: Statement[] = [];
+    this.skipNewlines();
+    while (!this.check(TokenType.Dedent) && !this.check(TokenType.EOF)) {
+      statements.push(this.parseStatement());
+      this.skipNewlines();
+    }
+    this.expect(TokenType.Dedent, 'esperava o fim do bloco indentado');
+    return statements;
+  }
+
+  private parseIfStatement(): Statement {
+    const token = this.expect(TokenType.Keyword, "esperava 'se'", 'se');
+    const condition = this.parseExpression();
+    this.expect(TokenType.Punctuation, "esperava ':' depois da condição", ':');
+    const thenBranch = this.parseBlock();
+    let elseBranch: Statement[] | null = null;
+    if (this.check(TokenType.Keyword, 'senao')) {
+      this.advance();
+      this.expect(TokenType.Punctuation, "esperava ':' depois de 'senao'", ':');
+      elseBranch = this.parseBlock();
+    }
+    return {
+      kind: 'IfStatement',
+      condition,
+      thenBranch,
+      elseBranch,
+      line: token.line,
+      column: token.column,
+    };
+  }
+
+  private parseWhileStatement(): Statement {
+    const token = this.expect(TokenType.Keyword, "esperava 'enquanto'", 'enquanto');
+    const condition = this.parseExpression();
+    this.expect(TokenType.Punctuation, "esperava ':' depois da condição", ':');
+    const body = this.parseBlock();
+    return { kind: 'WhileStatement', condition, body, line: token.line, column: token.column };
+  }
+
+  private parseRepeatStatement(): Statement {
+    const token = this.expect(TokenType.Keyword, "esperava 'repita'", 'repita');
+    const count = this.parseExpression();
+    this.expect(TokenType.Punctuation, "esperava ':' depois da contagem", ':');
+    const body = this.parseBlock();
+    return { kind: 'RepeatStatement', count, body, line: token.line, column: token.column };
+  }
+
+  private parseForEachStatement(): Statement {
+    const token = this.expect(TokenType.Keyword, "esperava 'para'", 'para');
+    this.expect(TokenType.Keyword, "esperava 'cada' depois de 'para'", 'cada');
+    const nameToken = this.expect(TokenType.Identifier, 'esperava o nome da variável do laço');
+    this.expect(TokenType.Keyword, "esperava 'em'", 'em');
+    const iterable = this.parseExpression();
+    this.expect(TokenType.Punctuation, "esperava ':' depois da lista", ':');
+    const body = this.parseBlock();
+    return {
+      kind: 'ForEachStatement',
+      itemName: nameToken.value,
+      iterable,
+      body,
+      line: token.line,
+      column: token.column,
+    };
+  }
+
+  private parseFunctionDeclaration(): Statement {
+    const token = this.expect(TokenType.Keyword, "esperava 'funcao'", 'funcao');
+    const nameToken = this.expect(TokenType.Identifier, 'esperava o nome da função');
+    this.expect(TokenType.Punctuation, "esperava '(' depois do nome da função", '(');
+    const params: string[] = [];
+    if (!this.check(TokenType.Punctuation, ')')) {
+      params.push(this.expect(TokenType.Identifier, 'esperava o nome de um parâmetro').value);
+      while (this.check(TokenType.Punctuation, ',')) {
+        this.advance();
+        params.push(this.expect(TokenType.Identifier, 'esperava o nome de um parâmetro').value);
+      }
+    }
+    this.expect(TokenType.Punctuation, "esperava ')' depois dos parâmetros", ')');
+    this.expect(TokenType.Punctuation, "esperava ':' depois de '()'", ':');
+    const body = this.parseBlock();
+    return {
+      kind: 'FunctionDeclaration',
+      name: nameToken.value,
+      params,
+      body,
+      line: token.line,
+      column: token.column,
+    };
+  }
+
+  private parseReturnStatement(): Statement {
+    const token = this.expect(TokenType.Keyword, "esperava 'retorna'", 'retorna');
+    let value: Expression | null = null;
+    if (
+      !this.check(TokenType.Newline) &&
+      !this.check(TokenType.Dedent) &&
+      !this.check(TokenType.EOF)
+    ) {
+      value = this.parseExpression();
+    }
+    this.expectStatementEnd();
+    return { kind: 'ReturnStatement', value, line: token.line, column: token.column };
   }
 
   private skipNewlines(): void {
